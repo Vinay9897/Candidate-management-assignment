@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: candidate-management
+
+  datasource:
+    url: ${CANDIDATE_DB_URL:jdbc:postgresql://localhost:5432/candidate_management}
+    username: postgres
+    password: root
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
