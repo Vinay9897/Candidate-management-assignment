@@ -2,6 +2,18 @@
 
 Backend service for candidate CRUD, search, filtering, and persistence.
 
+## Package structure
+
+Application code is organized by layer under `com.example.candidates`:
+
+- `controller` — REST endpoints
+- `service` and `service.impl` — use cases and service implementation
+- `repository` — persistence access
+- `entity` — JPA entities
+- `dto` — API request and response types
+- `exception` — application exceptions and HTTP error handling
+- `mapper` — entity-to-DTO mapping
+
 ## Requirements
 
 - Java 21
@@ -19,6 +31,17 @@ Configure the database using environment variables:
 | `CANDIDATE_DB_PASSWORD` | Yes | None |
 
 Do not commit database credentials. Create the database before running the application.
+
+For local development, credentials can also be entered in
+`src/main/resources/application-local.properties`:
+
+```properties
+spring.datasource.username=your-postgresql-username
+spring.datasource.password=your-postgresql-password
+```
+
+The local properties file is ignored by Git and should not be added to version
+control. Fill in both values before starting the application.
 
 ## Build and test
 

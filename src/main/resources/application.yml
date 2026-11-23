@@ -1,11 +1,14 @@
 spring:
+  config:
+    import: optional:classpath:application-local.properties
+
   application:
     name: candidate-management
 
   datasource:
     url: ${CANDIDATE_DB_URL:jdbc:postgresql://localhost:5432/candidate_management}
-    username: postgres
-    password: root
+    username: ${CANDIDATE_DB_USERNAME}
+    password: ${CANDIDATE_DB_PASSWORD}
 
   jpa:
     open-in-view: false
