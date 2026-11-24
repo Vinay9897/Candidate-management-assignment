@@ -1,6 +1,7 @@
 package com.example.candidates.exception;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 public record ApiError(
@@ -8,6 +9,7 @@ public record ApiError(
         String error,
         String message,
         Instant timestamp,
-        Map<String, String> fieldErrors
+        String path,
+        Map<String, List<String>> fieldErrors
 ) {
 }

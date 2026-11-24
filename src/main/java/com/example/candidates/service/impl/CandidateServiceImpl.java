@@ -6,6 +6,7 @@ import com.example.candidates.dto.CandidateFilterRequest;
 import com.example.candidates.dto.PageResponse;
 import com.example.candidates.entity.Candidate;
 import com.example.candidates.exception.DuplicateEmailException;
+import com.example.candidates.exception.InvalidRequestException;
 import com.example.candidates.exception.ResourceNotFoundException;
 import com.example.candidates.mapper.CandidateMapper;
 import com.example.candidates.repository.CandidateRepository;
@@ -122,33 +123,37 @@ public class CandidateServiceImpl implements CandidateService {
         Integer maxExperience = filters.maxExperience();
 
         if (page != null && page < 0) {
-            throw new IllegalArgumentException("Page must be zero or greater");
+            throw new InvalidRequestException("Page must be zero or greater");
         }
         if (size != null && (size < 1 || size > MAX_SIZE)) {
-            throw new IllegalArgumentException("Size must be between 1 and " + MAX_SIZE);
+            throw new InvalidRequestException("Size must be between 1 and " + MAX_SIZE);
         }
         if (minExperience != null && minExperience < 0) {
-            throw new IllegalArgumentException("Minimum experience cannot be negative");
+            throw new InvalidRequestException("Minimum experience cannot be negative");
         }
         if (maxExperience != null && maxExperience < 0) {
-            throw new IllegalArgumentException("Maximum experience cannot be negative");
+            throw new InvalidRequestException("Maximum experience cannot be negative");
+        }
+        if ((minExperience != null && minExperience > 50)
+                || (maxExperience != null && maxExperience > 50)) {
+            throw new InvalidRequestException("Experience filters must not exceed 50 years");
         }
         if (minExperience != null && maxExperience != null
                 && minExperience > maxExperience) {
-            throw new IllegalArgumentException(
+            throw new InvalidRequestException(
                     "Minimum experience cannot be greater than maximum experience"
             );
         }
 
         if (filters.sortBy() != null
                 && !SORT_FIELDS.containsKey(filters.sortBy().trim())) {
-            throw new IllegalArgumentException("Unsupported sort field: " + filters.sortBy());
+            throw new InvalidRequestException("Unsupported candidate sort field");
         }
 
         if (filters.sortDirection() != null) {
             String direction = filters.sortDirection().trim().toLowerCase(Locale.ROOT);
             if (!direction.equals("asc") && !direction.equals("desc")) {
-                throw new IllegalArgumentException(
+                throw new InvalidRequestException(
                         "Sort direction must be asc or desc"
                 );
             }

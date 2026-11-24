@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ModelAttribute;
 //import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 //import java.net.URI;
@@ -51,33 +51,8 @@ public class CandidateController {
 
     @GetMapping
     public ResponseEntity<PageResponse<CandidateResponse>> getAll(
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String email,
-            @RequestParam(required = false) String location,
-            @RequestParam(required = false) String phone,
-            @RequestParam(required = false) String resumeUrl,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) Integer minExperience,
-            @RequestParam(required = false) Integer maxExperience,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size,
-            @RequestParam(required = false) String sortBy,
-            @RequestParam(required = false) String sortDirection
+            @Valid @ModelAttribute CandidateFilterRequest filters
     ) {
-        CandidateFilterRequest filters = new CandidateFilterRequest(
-                name,
-                email,
-                location,
-                phone,
-                resumeUrl,
-                search,
-                minExperience,
-                maxExperience,
-                page,
-                size,
-                sortBy,
-                sortDirection
-        );
         return ResponseEntity.ok(candidateService.search(filters));
     }
 
