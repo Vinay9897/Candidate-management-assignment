@@ -6,15 +6,20 @@ import com.example.candidates.dto.CandidateResponse;
 import com.example.candidates.dto.PageResponse;
 import com.example.candidates.entity.Candidate;
 import com.example.candidates.exception.DuplicateEmailException;
+import com.example.candidates.exception.InvalidRequestException;
 import com.example.candidates.exception.ResourceNotFoundException;
 import com.example.candidates.mapper.CandidateMapper;
 import com.example.candidates.repository.CandidateRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -23,6 +28,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -31,6 +37,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -191,8 +198,146 @@ class CandidateServiceImplTest {
         );
     }
 
+    @ParameterizedTest
+    @MethodSource("invalidSearchFilters")
+    void rejectsInvalidSearchFiltersBeforeQuerying(
+            CandidateFilterRequest filters,
+            String expectedMessage
+    ) {
+        assertThatThrownBy(() -> candidateService.search(filters))
+                    .isInstanceOf(InvalidRequestException.class)
+                .hasMessage(expectedMessage);
+
+        verifyNoInteractions(candidateRepository, candidateMapper);
+    }
+
+    @ParameterizedTest
+    @MethodSource("validOpenEndedExperienceFilters")
+    void acceptsOpenEndedExperienceRanges(Integer minExperience, Integer maxExperience) {
+        CandidateFilterRequest filters = filters(
+                minExperience,
+                maxExperience,
+                null,
+                null,
+                null,
+                null
+        );
+        when(candidateRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<Candidate>>any(),
+                any(Pageable.class)
+        )).thenAnswer(invocation -> Page.empty(invocation.getArgument(1)));
+
+        PageResponse<CandidateResponse> result = candidateService.search(filters);
+
+        assertThat(result.content()).isEmpty();
+        verify(candidateRepository).findAll(
+                org.mockito.ArgumentMatchers.<Specification<Candidate>>any(),
+                any(Pageable.class)
+        );
+    }
+
+    static Stream<Arguments> validOpenEndedExperienceFilters() {
+        return Stream.of(
+                Arguments.of(3, null),
+                Arguments.of(null, 10)
+        );
+    }
+
+    static Stream<Arguments> invalidSearchFilters() {
+        return Stream.of(
+                Arguments.of(filters(null, null, -1, null, null, null),
+                        "Page must be zero or greater"),
+                Arguments.of(filters(null, null, null, 0, null, null),
+                        "Size must be between 1 and 100"),
+                Arguments.of(filters(null, null, null, 101, null, null),
+                        "Size must be between 1 and 100"),
+                Arguments.of(filters(-1, null, null, null, null, null),
+                        "Minimum experience cannot be negative"),
+                Arguments.of(filters(null, -1, null, null, null, null),
+                        "Maximum experience cannot be negative"),
+                Arguments.of(filters(null, 51, 0, null, null, null),
+                        "Experience filters must not exceed 50 years"),
+                Arguments.of(filters(51, null, 0, null, null, null),
+                        "Experience filters must not exceed 50 years"),
+                Arguments.of(filters(8, 3, 0, null, null, null),
+                        "Minimum experience cannot be greater than maximum experience"),
+                Arguments.of(filters(null, null, null, null, "unknown", null),
+                        "Unsupported candidate sort field"),
+                Arguments.of(filters(null, null, null, null, null, "sideways"),
+                        "Sort direction must be asc or desc")
+        );
+    }
+
+    @Test
+    void appliesDefaultPageSizeAndDescendingCreatedAtSort() {
+        CandidateFilterRequest filters = filters(null, null, null, null, null, null);
+        Pageable expected = PageRequest.of(
+                0,
+                20,
+                Sort.by("createdAt").descending().and(Sort.by("id").ascending())
+        );
+        when(candidateRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<Candidate>>any(),
+                any(Pageable.class)
+        )).thenReturn(Page.empty(expected));
+
+        PageResponse<CandidateResponse> result = candidateService.search(filters);
+
+        assertThat(result.page()).isZero();
+        assertThat(result.size()).isEqualTo(20);
+        verify(candidateRepository).findAll(
+                org.mockito.ArgumentMatchers.<Specification<Candidate>>any(),
+                eq(expected)
+        );
+    }
+
+    @Test
+    void appliesExplicitDescendingSortAndPagination() {
+        CandidateFilterRequest filters = filters(null, null, 2, 10, " updatedAt ", " DESC ");
+        Pageable expected = PageRequest.of(
+                2,
+                10,
+                Sort.by("updatedAt").descending().and(Sort.by("id").ascending())
+        );
+        when(candidateRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<Candidate>>any(),
+                any(Pageable.class)
+        )).thenReturn(Page.empty(expected));
+
+        candidateService.search(filters);
+
+        verify(candidateRepository).findAll(
+                org.mockito.ArgumentMatchers.<Specification<Candidate>>any(),
+                eq(expected)
+        );
+    }
+
     private CandidateRequest request(String firstName, String email) {
         return new CandidateRequest(firstName, "Sharma", email, null, null, 5, null);
+    }
+
+    private static CandidateFilterRequest filters(
+            Integer minExperience,
+            Integer maxExperience,
+            Integer page,
+            Integer size,
+            String sortBy,
+            String sortDirection
+    ) {
+        return new CandidateFilterRequest(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                minExperience,
+                maxExperience,
+                page,
+                size,
+                sortBy,
+                sortDirection
+        );
     }
 
     private Candidate candidate(String email) {
