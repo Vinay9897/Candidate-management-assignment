@@ -49,7 +49,12 @@ control. Fill in both values before starting the application.
 mvn clean verify
 ```
 
-PostgreSQL integration tests use Testcontainers and require Docker when those tests are added.
+JaCoCo coverage is collected during tests and the HTML/XML reports are generated during
+`verify` under `target/site/jacoco/`. Open `target/site/jacoco/index.html` for the coverage
+report. The JaCoCo execution data is written to `target/jacoco.exec`.
+
+PostgreSQL integration tests require a reachable PostgreSQL database and credentials from the
+environment or ignored local properties file.
 
 ## Run locally
 
@@ -64,3 +69,7 @@ OpenAPI documentation is available at `/swagger-ui.html`.
 ## Database migrations
 
 Flyway migrations belong in `src/main/resources/db/migration`.
+
+## Technical documents
+
+The design and engineering documents are maintained in [docs/](docs/README.md).
